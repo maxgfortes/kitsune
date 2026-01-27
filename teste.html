@@ -520,7 +520,7 @@
         .loading-spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid rgba(255, 107, 107, 0.2);
+            border: 3px solid rgba(90, 90, 90, 0.2);
             border-top-color: #4A90E2;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -756,474 +756,634 @@
     </div>
 
     <script>
-        const API_KEY = 'AIzaSyAzJjp6-pcdf7wuGbIFAKhyJ9j3rZ5YBz4';
-        let watchHistory = [];
-        let searchCount = 0;
-        let currentResults = [];
-        let currentQuery = '';
-        let nextPageToken = '';
-        let isLoadingMore = false;
-        let currentVideoData = null;
+// Kitsune - JavaScript sem API
+// Usa scraping do YouTube + iframe normal
 
-        // Inicialização
-        function initPage() {
-            loadHistory();
-            loadStats();
-            displayRecentVideos();
+const watchHistory = [];
+let searchCount = 0;
+let currentResults = [];
+let currentQuery = '';
+let currentPage = 1;
+let isLoadingMore = false;
+let currentVideoData = null;
+
+// Função para buscar vídeos via scraping
+async function searchYouTubeNoAPI(query, page = 1) {
+    try {
+        // Usar a URL de busca do YouTube direto
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        
+        // Fetch com CORS proxy (você vai precisar de um)
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const response = await fetch(proxyUrl + encodeURIComponent(searchUrl));
+        const html = await response.text();
+        
+        // Extrair dados do ytInitialData
+        const videosData = extractVideosFromHTML(html);
+        return videosData;
+        
+    } catch (error) {
+        console.error('Erro ao buscar:', error);
+        // Fallback: usar método alternativo
+        return await searchYouTubeFallback(query);
+    }
+}
+
+// Extrair vídeos do HTML do YouTube
+function extractVideosFromHTML(html) {
+    try {
+        // Procurar por ytInitialData no HTML
+        const match = html.match(/var ytInitialData = ({.+?});/);
+        if (!match) return [];
+        
+        const data = JSON.parse(match[1]);
+        
+        // Navegar pela estrutura do YouTube
+        const contents = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        if (!contents) return [];
+        
+        const videos = [];
+        
+        for (const section of contents) {
+            const items = section?.itemSectionRenderer?.contents || [];
             
-            if (watchHistory.length > 0) {
-                fetchSuggestions();
-                document.getElementById('emptyState').style.display = 'none';
-            } else {
-                loadTrendingVideos();
+            for (const item of items) {
+                const videoRenderer = item.videoRenderer;
+                if (!videoRenderer) continue;
+                
+                const video = {
+                    id: { videoId: videoRenderer.videoId },
+                    snippet: {
+                        title: videoRenderer.title?.runs?.[0]?.text || '',
+                        channelTitle: videoRenderer.ownerText?.runs?.[0]?.text || '',
+                        publishedAt: videoRenderer.publishedTimeText?.simpleText || '',
+                        thumbnails: {
+                            medium: {
+                                url: videoRenderer.thumbnail?.thumbnails?.[0]?.url || 
+                                     `https://i.ytimg.com/vi/${videoRenderer.videoId}/mqdefault.jpg`
+                            }
+                        }
+                    },
+                    lengthSeconds: parseDuration(videoRenderer.lengthText?.simpleText)
+                };
+                
+                videos.push(video);
             }
-            
-            setupInfiniteScroll();
         }
+        
+        return videos;
+    } catch (error) {
+        console.error('Erro ao extrair vídeos:', error);
+        return [];
+    }
+}
 
-        // Setup Infinite Scroll
-        function setupInfiniteScroll() {
-            let timeout;
-            window.addEventListener('scroll', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    const resultsSection = document.getElementById('resultsSection');
-                    if (resultsSection.style.display === 'none') return;
-                    if (isLoadingMore) return;
-                    if (!nextPageToken) return;
-                    
-                    const scrollHeight = document.documentElement.scrollHeight;
-                    const scrollTop = window.scrollY;
-                    const clientHeight = window.innerHeight;
-                    
-                    if (scrollTop + clientHeight >= scrollHeight - 500) {
-                        loadMoreResults();
+// Método fallback usando RSS feed do YouTube
+async function searchYouTubeFallback(query) {
+    try {
+        // Usar API de busca alternativa (noembed.com)
+        const response = await fetch(`https://noembed.com/search?provider=youtube&query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        if (!data || !Array.isArray(data)) return [];
+        
+        return data.map(item => ({
+            id: { videoId: extractVideoId(item.url) },
+            snippet: {
+                title: item.title || '',
+                channelTitle: item.author_name || '',
+                publishedAt: new Date().toISOString(),
+                thumbnails: {
+                    medium: {
+                        url: item.thumbnail_url || `https://i.ytimg.com/vi/${extractVideoId(item.url)}/mqdefault.jpg`
                     }
-                }, 100);
+                }
+            }
+        }));
+    } catch (error) {
+        console.error('Fallback falhou:', error);
+        return [];
+    }
+}
+
+// Buscar vídeos em alta (trending)
+async function getTrendingVideos() {
+    try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const response = await fetch(proxyUrl + encodeURIComponent('https://www.youtube.com/feed/trending'));
+        const html = await response.text();
+        
+        return extractVideosFromHTML(html);
+    } catch (error) {
+        console.error('Erro ao buscar trending:', error);
+        return [];
+    }
+}
+
+// Buscar vídeos relacionados
+async function getRelatedVideos(videoId) {
+    try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const response = await fetch(proxyUrl + encodeURIComponent(videoUrl));
+        const html = await response.text();
+        
+        // Extrair vídeos relacionados
+        const match = html.match(/var ytInitialData = ({.+?});/);
+        if (!match) return [];
+        
+        const data = JSON.parse(match[1]);
+        
+        // Navegar para relacionados
+        const secondary = data?.contents?.twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results;
+        if (!secondary) return [];
+        
+        const videos = [];
+        
+        for (const item of secondary) {
+            const compactVideo = item.compactVideoRenderer;
+            if (!compactVideo) continue;
+            
+            videos.push({
+                id: { videoId: compactVideo.videoId },
+                snippet: {
+                    title: compactVideo.title?.simpleText || '',
+                    channelTitle: compactVideo.longBylineText?.runs?.[0]?.text || '',
+                    publishedAt: new Date().toISOString(),
+                    thumbnails: {
+                        medium: {
+                            url: compactVideo.thumbnail?.thumbnails?.[0]?.url || 
+                                 `https://i.ytimg.com/vi/${compactVideo.videoId}/mqdefault.jpg`
+                        }
+                    }
+                },
+                lengthSeconds: parseDuration(compactVideo.lengthText?.simpleText)
             });
         }
+        
+        return videos;
+    } catch (error) {
+        console.error('Erro ao buscar relacionados:', error);
+        return [];
+    }
+}
 
-        // Carregar mais resultados
-        async function loadMoreResults() {
-            if (!nextPageToken || isLoadingMore) return;
+// Extrair ID do vídeo de URL
+function extractVideoId(url) {
+    const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^"&?\/\s]{11})/);
+    return match ? match[1] : '';
+}
+
+// Parsear duração (5:30 -> segundos)
+function parseDuration(duration) {
+    if (!duration) return 0;
+    const parts = duration.split(':').reverse();
+    let seconds = 0;
+    for (let i = 0; i < parts.length; i++) {
+        seconds += parseInt(parts[i]) * Math.pow(60, i);
+    }
+    return seconds;
+}
+
+// Formatar duração (segundos -> 5:30)
+function formatDuration(seconds) {
+    if (!seconds) return '';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Inicialização
+async function initPage() {
+    loadHistory();
+    loadStats();
+    displayRecentVideos();
+    
+    if (watchHistory.length > 0) {
+        await fetchSuggestions();
+        document.getElementById('emptyState').style.display = 'none';
+    } else {
+        await loadTrendingVideos();
+    }
+    
+    setupInfiniteScroll();
+}
+
+// Setup Infinite Scroll
+function setupInfiniteScroll() {
+    let timeout;
+    window.addEventListener('scroll', () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const resultsSection = document.getElementById('resultsSection');
+            if (resultsSection.style.display === 'none') return;
+            if (isLoadingMore) return;
             
-            isLoadingMore = true;
-            const loadingMore = document.getElementById('loadingMore');
-            loadingMore.style.display = 'block';
+            const scrollHeight = document.documentElement.scrollHeight;
+            const scrollTop = window.scrollY;
+            const clientHeight = window.innerHeight;
             
-            try {
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(currentQuery)}&type=video&pageToken=${nextPageToken}&key=${API_KEY}`
-                );
-                
-                if (!response.ok) throw new Error('Erro na busca');
-                
-                const data = await response.json();
-                nextPageToken = data.nextPageToken || '';
-                
-                const newVideos = data.items || [];
-                currentResults = [...currentResults, ...newVideos];
-                
-                appendResults(newVideos);
-                
-            } catch (error) {
-                console.error('Erro ao carregar mais:', error);
-            } finally {
-                isLoadingMore = false;
-                loadingMore.style.display = 'none';
+            if (scrollTop + clientHeight >= scrollHeight - 500) {
+                loadMoreResults();
             }
-        }
+        }, 100);
+    });
+}
 
-        // Adicionar resultados ao grid
-        function appendResults(videos) {
-            const container = document.getElementById('resultsContainer');
-            const html = videos.map(video => createVideoCard(video)).join('');
-            container.insertAdjacentHTML('beforeend', html);
-        }
+// Carregar mais resultados
+async function loadMoreResults() {
+    if (isLoadingMore) return;
+    
+    isLoadingMore = true;
+    const loadingMore = document.getElementById('loadingMore');
+    loadingMore.style.display = 'block';
+    
+    currentPage++;
+    
+    try {
+        const newVideos = await searchYouTubeNoAPI(currentQuery, currentPage);
+        currentResults = [...currentResults, ...newVideos];
+        appendResults(newVideos);
+    } catch (error) {
+        console.error('Erro ao carregar mais:', error);
+    } finally {
+        isLoadingMore = false;
+        loadingMore.style.display = 'none';
+    }
+}
 
-        // Carregar histórico
-        function loadHistory() {
-            const saved = localStorage.getItem('youtubeHistory');
-            if (saved) {
-                watchHistory = JSON.parse(saved);
-            }
-        }
+// Adicionar resultados ao grid
+function appendResults(videos) {
+    const container = document.getElementById('resultsContainer');
+    const html = videos.map(video => createVideoCard(video)).join('');
+    container.insertAdjacentHTML('beforeend', html);
+}
 
-        // Salvar histórico
-        function saveHistory() {
-            localStorage.setItem('youtubeHistory', JSON.stringify(watchHistory));
-            updateStats();
-        }
+// Carregar histórico
+function loadHistory() {
+    const saved = localStorage.getItem('youtubeHistory');
+    if (saved) {
+        watchHistory.length = 0;
+        watchHistory.push(...JSON.parse(saved));
+    }
+}
 
-        // Carregar estatísticas
-        function loadStats() {
-            const stats = JSON.parse(localStorage.getItem('kitsune_stats') || '{"watches": 0, "searches": 0}');
-            document.getElementById('videosWatched').textContent = stats.watches;
-            document.getElementById('searchesCount').textContent = stats.searches;
-            searchCount = stats.searches;
-        }
+// Salvar histórico
+function saveHistory() {
+    localStorage.setItem('youtubeHistory', JSON.stringify(watchHistory));
+    updateStats();
+}
 
-        // Atualizar estatísticas
-        function updateStats() {
-            const stats = {
-                watches: watchHistory.length,
-                searches: searchCount
-            };
-            localStorage.setItem('kitsune_stats', JSON.stringify(stats));
-            document.getElementById('videosWatched').textContent = stats.watches;
-            document.getElementById('searchesCount').textContent = stats.searches;
-        }
+// Carregar estatísticas
+function loadStats() {
+    const stats = JSON.parse(localStorage.getItem('kitsune_stats') || '{"watches": 0, "searches": 0}');
+    document.getElementById('videosWatched').textContent = stats.watches;
+    document.getElementById('searchesCount').textContent = stats.searches;
+    searchCount = stats.searches;
+}
 
-        // Adicionar ao histórico
-        function addToHistory(video) {
-            watchHistory = watchHistory.filter(v => v.id.videoId !== video.id.videoId);
-            watchHistory.unshift(video);
-            
-            if (watchHistory.length > 20) {
-                watchHistory = watchHistory.slice(0, 20);
-            }
-            
-            saveHistory();
-            displayRecentVideos();
-        }
+// Atualizar estatísticas
+function updateStats() {
+    const stats = {
+        watches: watchHistory.length,
+        searches: searchCount
+    };
+    localStorage.setItem('kitsune_stats', JSON.stringify(stats));
+    document.getElementById('videosWatched').textContent = stats.watches;
+    document.getElementById('searchesCount').textContent = stats.searches;
+}
 
-        // Limpar histórico
-        function clearHistory() {
-            if (confirm('Deseja realmente limpar todo o histórico?')) {
-                watchHistory = [];
-                saveHistory();
-                displayRecentVideos();
-                document.getElementById('suggestionsSection').style.display = 'none';
-            }
-        }
+// Adicionar ao histórico
+function addToHistory(video) {
+    const index = watchHistory.findIndex(v => v.id.videoId === video.id.videoId);
+    if (index !== -1) {
+        watchHistory.splice(index, 1);
+    }
+    watchHistory.unshift(video);
+    
+    if (watchHistory.length > 20) {
+        watchHistory.splice(20);
+    }
+    
+    saveHistory();
+    displayRecentVideos();
+}
 
-        // Exibir vídeos recentes
-        function displayRecentVideos() {
-            const section = document.getElementById('recentSection');
-            const container = document.getElementById('recentVideos');
-            
-            if (watchHistory.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-            
+// Limpar histórico
+function clearHistory() {
+    if (confirm('Deseja realmente limpar todo o histórico?')) {
+        watchHistory.length = 0;
+        saveHistory();
+        displayRecentVideos();
+        document.getElementById('suggestionsSection').style.display = 'none';
+    }
+}
+
+// Exibir vídeos recentes
+function displayRecentVideos() {
+    const section = document.getElementById('recentSection');
+    const container = document.getElementById('recentVideos');
+    
+    if (watchHistory.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    container.innerHTML = watchHistory.slice(0, 8).map(video => createVideoCard(video)).join('');
+}
+
+// Buscar sugestões
+async function fetchSuggestions() {
+    if (watchHistory.length === 0) return;
+    
+    const section = document.getElementById('suggestionsSection');
+    const container = document.getElementById('suggestedVideos');
+    
+    const keywords = watchHistory
+        .slice(0, 3)
+        .map(v => v.snippet.title.split(' ').slice(0, 2).join(' '))
+        .join(' ');
+    
+    try {
+        const videos = await searchYouTubeNoAPI(keywords);
+        
+        const filtered = videos.filter(
+            v => !watchHistory.some(h => h.id.videoId === v.id.videoId)
+        );
+        
+        if (filtered.length > 0) {
             section.style.display = 'block';
-            container.innerHTML = watchHistory.slice(0, 8).map(video => createVideoCard(video)).join('');
+            container.innerHTML = filtered.slice(0, 8).map(video => createVideoCard(video)).join('');
         }
+    } catch (error) {
+        console.error('Erro ao buscar sugestões:', error);
+    }
+}
 
-        // Buscar sugestões
-        async function fetchSuggestions() {
-            if (watchHistory.length === 0) return;
-            
-            const section = document.getElementById('suggestionsSection');
-            const container = document.getElementById('suggestedVideos');
-            
-            const keywords = watchHistory
-                .slice(0, 3)
-                .map(v => v.snippet.title.split(' ').slice(0, 2).join(' '))
-                .join(' ');
-            
-            try {
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=${encodeURIComponent(keywords)}&type=video&order=relevance&key=${API_KEY}`
-                );
-                
-                if (!response.ok) throw new Error('Erro na busca');
-                
-                const data = await response.json();
-                const videos = data.items || [];
-                
-                const filtered = videos.filter(
-                    v => !watchHistory.some(h => h.id.videoId === v.id.videoId)
-                );
-                
-                if (filtered.length > 0) {
-                    section.style.display = 'block';
-                    container.innerHTML = filtered.map(video => createVideoCard(video)).join('');
-                }
-                
-            } catch (error) {
-                console.error('Erro ao buscar sugestões:', error);
-            }
+// Carregar vídeos em alta
+async function loadTrendingVideos() {
+    const section = document.getElementById('trendingSection');
+    const container = document.getElementById('trendingVideos');
+    
+    try {
+        const videos = await getTrendingVideos();
+        
+        if (videos.length > 0) {
+            section.style.display = 'block';
+            container.innerHTML = videos.slice(0, 8).map(video => createVideoCard(video)).join('');
         }
+    } catch (error) {
+        console.error('Erro ao buscar trending:', error);
+    }
+}
 
-        // Carregar vídeos em alta
-        async function loadTrendingVideos() {
-            const section = document.getElementById('trendingSection');
-            const container = document.getElementById('trendingVideos');
-            
-            try {
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=trending&type=video&order=viewCount&key=${API_KEY}`
-                );
-                
-                if (!response.ok) throw new Error('Erro na busca');
-                
-                const data = await response.json();
-                const videos = data.items || [];
-                
-                if (videos.length > 0) {
-                    section.style.display = 'block';
-                    container.innerHTML = videos.map(video => createVideoCard(video)).join('');
-                }
-                
-            } catch (error) {
-                console.error('Erro ao buscar trending:', error);
-            }
+// Buscar vídeos relacionados
+async function fetchRelatedVideos(videoId) {
+    try {
+        const videos = await getRelatedVideos(videoId);
+        displayRelatedVideos(videos);
+    } catch (error) {
+        console.error('Erro ao buscar relacionados:', error);
+        if (currentVideoData) {
+            const query = currentVideoData.snippet.title.split(' ').slice(0, 3).join(' ');
+            const videos = await searchYouTubeNoAPI(query);
+            displayRelatedVideos(videos.slice(0, 20));
         }
+    }
+}
 
-        // Buscar vídeos relacionados
-        async function fetchRelatedVideos(videoId) {
-            try {
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&relatedToVideoId=${videoId}&type=video&key=${API_KEY}`
-                );
-                
-                if (!response.ok) throw new Error('Erro na busca');
-                
-                const data = await response.json();
-                const videos = data.items || [];
-                
-                displayRelatedVideos(videos);
-                
-            } catch (error) {
-                console.error('Erro ao buscar relacionados:', error);
-                // Fallback: buscar baseado no título
-                if (currentVideoData) {
-                    const query = currentVideoData.snippet.title.split(' ').slice(0, 3).join(' ');
-                    const response = await fetch(
-                        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}`
-                    );
-                    const data = await response.json();
-                    displayRelatedVideos(data.items || []);
-                }
-            }
-        }
+// Exibir vídeos relacionados
+function displayRelatedVideos(videos) {
+    const container = document.getElementById('relatedVideos');
+    container.innerHTML = videos.map(video => createRelatedVideoItem(video)).join('');
+}
 
-        // Exibir vídeos relacionados
-        function displayRelatedVideos(videos) {
-            const container = document.getElementById('relatedVideos');
-            container.innerHTML = videos.map(video => createRelatedVideoItem(video)).join('');
-        }
+// Criar item de vídeo relacionado
+function createRelatedVideoItem(video) {
+    const videoDataStr = JSON.stringify(video).replace(/"/g, '&quot;');
+    return `
+        <div class="related-video-item" onclick='playVideoFromData(${videoDataStr})'>
+            <div class="related-thumbnail">
+                <img src="${video.snippet.thumbnails.medium.url}" alt="${escapeHtml(video.snippet.title)}">
+            </div>
+            <div class="related-info">
+                <div class="related-title">${escapeHtml(video.snippet.title)}</div>
+                <div class="related-channel">${escapeHtml(video.snippet.channelTitle)}</div>
+                <div class="related-stats">${formatDuration(video.lengthSeconds) || formatDate(video.snippet.publishedAt)}</div>
+            </div>
+        </div>
+    `;
+}
 
-        // Criar item de vídeo relacionado
-        function createRelatedVideoItem(video) {
-            return `
-                <div class="related-video-item" onclick='playVideo("${video.id.videoId}", ${JSON.stringify(video).replace(/'/g, "&#39;")})'>
-                    <div class="related-thumbnail">
-                        <img src="${video.snippet.thumbnails.medium.url}" alt="${escapeHtml(video.snippet.title)}">
-                    </div>
-                    <div class="related-info">
-                        <div class="related-title">${escapeHtml(video.snippet.title)}</div>
-                        <div class="related-channel">${escapeHtml(video.snippet.channelTitle)}</div>
-                        <div class="related-stats">${formatDate(video.snippet.publishedAt)}</div>
-                    </div>
+// Criar card de vídeo
+function createVideoCard(video) {
+    const channelInitial = video.snippet.channelTitle.charAt(0).toUpperCase();
+    const videoDataStr = JSON.stringify(video).replace(/"/g, '&quot;');
+    
+    return `
+        <div class="video-card" onclick='playVideoFromData(${videoDataStr})'>
+            <div class="video-thumbnail">
+                <img src="${video.snippet.thumbnails.medium.url}" alt="${escapeHtml(video.snippet.title)}">
+                <div class="play-overlay">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </div>
+                ${video.lengthSeconds ? `<div class="video-duration">${formatDuration(video.lengthSeconds)}</div>` : ''}
+            </div>
+            <div class="video-info">
+                <div class="video-title">${escapeHtml(video.snippet.title)}</div>
+                <div class="video-channel">
+                    <div class="channel-avatar-small">${channelInitial}</div>
+                    ${escapeHtml(video.snippet.channelTitle)}
+                </div>
+                <div class="video-stats">${formatDate(video.snippet.publishedAt)}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Buscar vídeos
+async function searchVideos() {
+    const query = document.getElementById('searchInput').value.trim();
+    
+    if (!query) {
+        alert('Por favor, digite algo para buscar!');
+        return;
+    }
+    
+    await performSearch(query);
+}
+
+// Busca rápida
+function quickSearch(query) {
+    document.getElementById('searchInput').value = query;
+    performSearch(query);
+}
+
+// Realizar busca
+async function performSearch(query) {
+    currentQuery = query;
+    currentResults = [];
+    currentPage = 1;
+    
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultsSection = document.getElementById('resultsSection');
+    const homeContent = document.getElementById('homeContent');
+    const playerLayout = document.getElementById('playerLayout');
+
+    homeContent.style.display = 'none';
+    playerLayout.classList.remove('show');
+    resultsSection.style.display = 'block';
+
+    resultsContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>Buscando vídeos...</p></div>';
+    
+    searchCount++;
+    updateStats();
+    
+    try {
+        const videos = await searchYouTubeNoAPI(query);
+        currentResults = videos;
+        
+        if (currentResults.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <div class="empty-title">Nenhum resultado encontrado</div>
+                    <div class="empty-text">Tente buscar com outras palavras</div>
                 </div>
             `;
+            return;
         }
+        
+        resultsContainer.innerHTML = currentResults.map(video => createVideoCard(video)).join('');
+    } catch (error) {
+        console.error('Erro:', error);
+        resultsContainer.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <div class="empty-title">Erro ao buscar vídeos</div>
+                <div class="empty-text">Verifique sua conexão ou tente novamente</div>
+            </div>
+        `;
+    }
+}
 
-        // Criar card de vídeo
-        function createVideoCard(video) {
-            const channelInitial = video.snippet.channelTitle.charAt(0).toUpperCase();
-            
-            return `
-                <div class="video-card" onclick='playVideo("${video.id.videoId}", ${JSON.stringify(video).replace(/'/g, "&#39;")})'>
-                    <div class="video-thumbnail">
-                        <img src="${video.snippet.thumbnails.medium.url}" alt="${escapeHtml(video.snippet.title)}">
-                        <div class="play-overlay">
-                            <svg viewBox="0 0 24 24">
-                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="video-info">
-                        <div class="video-title">${escapeHtml(video.snippet.title)}</div>
-                        <div class="video-channel">
-                            <div class="channel-avatar-small">${channelInitial}</div>
-                            ${escapeHtml(video.snippet.channelTitle)}
-                        </div>
-                        <div class="video-stats">${formatDate(video.snippet.publishedAt)}</div>
-                    </div>
+// Função auxiliar para reproduzir vídeo
+function playVideoFromData(videoData) {
+    playVideo(videoData.id.videoId, videoData);
+}
+
+// Reproduzir vídeo
+function playVideo(videoId, videoData) {
+    const playerLayout = document.getElementById('playerLayout');
+    const resultsSection = document.getElementById('resultsSection');
+    const homeContent = document.getElementById('homeContent');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoDetails = document.getElementById('videoDetails');
+
+    currentVideoData = videoData;
+
+    if (videoData) {
+        addToHistory(videoData);
+        
+        const channelInitial = videoData.snippet.channelTitle.charAt(0).toUpperCase();
+        
+        videoDetails.innerHTML = `
+            <h2 class="video-title-large">${escapeHtml(videoData.snippet.title)}</h2>
+            <div class="video-meta">
+                <div class="channel-info">
+                    <div class="channel-avatar">${channelInitial}</div>
+                    <strong>${escapeHtml(videoData.snippet.channelTitle)}</strong>
                 </div>
-            `;
-        }
+                <span>•</span>
+                <span>${formatDate(videoData.snippet.publishedAt)}</span>
+                ${videoData.lengthSeconds ? `<span>•</span><span>${formatDuration(videoData.lengthSeconds)}</span>` : ''}
+            </div>
+        `;
+    }
 
-        // Buscar vídeos
-        async function searchVideos() {
-            const query = document.getElementById('searchInput').value.trim();
-            
-            if (!query) {
-                alert('Por favor, digite algo para buscar!');
-                return;
-            }
-            
-            performSearch(query);
-        }
+    resultsSection.style.display = 'none';
+    homeContent.style.display = 'none';
+    playerLayout.classList.add('show');
 
-        // Busca rápida
-        function quickSearch(query) {
-            document.getElementById('searchInput').value = query;
-            performSearch(query);
-        }
+    // Iframe normal do YouTube
+    videoPlayer.innerHTML = `
+        <iframe 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    `;
+    
+    fetchRelatedVideos(videoId);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-        // Realizar busca
-        async function performSearch(query) {
-            currentQuery = query;
-            currentResults = [];
-            nextPageToken = '';
-            
-            const resultsContainer = document.getElementById('resultsContainer');
-            const resultsSection = document.getElementById('resultsSection');
-            const homeContent = document.getElementById('homeContent');
-            const playerLayout = document.getElementById('playerLayout');
+// Voltar
+function backToResults() {
+    const playerLayout = document.getElementById('playerLayout');
+    const resultsSection = document.getElementById('resultsSection');
+    const homeContent = document.getElementById('homeContent');
+    
+    playerLayout.classList.remove('show');
+    
+    if (currentResults.length > 0) {
+        resultsSection.style.display = 'block';
+    } else {
+        homeContent.style.display = 'block';
+    }
+}
 
-            homeContent.style.display = 'none';
-            playerLayout.classList.remove('show');
-            resultsSection.style.display = 'block';
+// Ir para home
+function goHome() {
+    const playerLayout = document.getElementById('playerLayout');
+    const resultsSection = document.getElementById('resultsSection');
+    const homeContent = document.getElementById('homeContent');
+    
+    playerLayout.classList.remove('show');
+    resultsSection.style.display = 'none';
+    homeContent.style.display = 'block';
+    
+    currentResults = [];
+    document.getElementById('searchInput').value = '';
+}
 
-            resultsContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>Buscando vídeos...</p></div>';
-            
-            searchCount++;
-            updateStats();
-            
-            try {
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}`
-                );
-                
-                if (!response.ok) throw new Error('Erro na busca');
-                
-                const data = await response.json();
-                currentResults = data.items || [];
-                nextPageToken = data.nextPageToken || '';
-                
-                if (currentResults.length === 0) {
-                    resultsContainer.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-icon">🔍</div>
-                            <div class="empty-title">Nenhum resultado encontrado</div>
-                            <div class="empty-text">Tente buscar com outras palavras</div>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                resultsContainer.innerHTML = currentResults.map(video => createVideoCard(video)).join('');
-                
-            } catch (error) {
-                console.error('Erro:', error);
-                resultsContainer.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">⚠️</div>
-                        <div class="empty-title">Erro ao buscar vídeos</div>
-                        <div class="empty-text">Verifique sua conexão ou tente novamente</div>
-                    </div>
-                `;
-            }
-        }
+// Utilitários
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
-        // Reproduzir vídeo
-        function playVideo(videoId, videoData) {
-            const playerLayout = document.getElementById('playerLayout');
-            const resultsSection = document.getElementById('resultsSection');
-            const homeContent = document.getElementById('homeContent');
-            const videoPlayer = document.getElementById('videoPlayer');
-            const videoDetails = document.getElementById('videoDetails');
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 1) return 'Hoje';
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;
+    return `${Math.floor(diffDays / 365)} anos atrás`;
+}
 
-            currentVideoData = videoData;
+// Event Listeners
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchVideos();
+    }
+});
 
-            if (videoData) {
-                addToHistory(videoData);
-                
-                const channelInitial = videoData.snippet.channelTitle.charAt(0).toUpperCase();
-                
-                videoDetails.innerHTML = `
-                    <h2 class="video-title-large">${escapeHtml(videoData.snippet.title)}</h2>
-                    <div class="video-meta">
-                        <div class="channel-info">
-                            <div class="channel-avatar">${channelInitial}</div>
-                            <strong>${escapeHtml(videoData.snippet.channelTitle)}</strong>
-                        </div>
-                        <span>•</span>
-                        <span>${formatDate(videoData.snippet.publishedAt)}</span>
-                    </div>
-                `;
-            }
-
-            resultsSection.style.display = 'none';
-            homeContent.style.display = 'none';
-            playerLayout.classList.add('show');
-
-            videoPlayer.innerHTML = `
-                <iframe 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-                </iframe>
-            `;
-            
-            fetchRelatedVideos(videoId);
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // Voltar
-        function backToResults() {
-            const playerLayout = document.getElementById('playerLayout');
-            const resultsSection = document.getElementById('resultsSection');
-            const homeContent = document.getElementById('homeContent');
-            
-            playerLayout.classList.remove('show');
-            
-            if (currentResults.length > 0) {
-                resultsSection.style.display = 'block';
-            } else {
-                homeContent.style.display = 'block';
-            }
-        }
-
-        // Ir para home
-        function goHome() {
-            const playerLayout = document.getElementById('playerLayout');
-            const resultsSection = document.getElementById('resultsSection');
-            const homeContent = document.getElementById('homeContent');
-            
-            playerLayout.classList.remove('show');
-            resultsSection.style.display = 'none';
-            homeContent.style.display = 'block';
-            
-            currentResults = [];
-            document.getElementById('searchInput').value = '';
-        }
-
-        // Utilitários
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays < 1) return 'Hoje';
-            if (diffDays < 7) return `${diffDays} dias atrás`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
-            if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;
-            return `${Math.floor(diffDays / 365)} anos atrás`;
-        }
-
-        // Event Listeners
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchVideos();
-            }
-        });
-
-        window.addEventListener('DOMContentLoaded', initPage);
+window.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
