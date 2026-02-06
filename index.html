@@ -111,7 +111,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 25px;
             color: #fff;
-            font-size: 0.95rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
         
@@ -1620,9 +1620,10 @@ function playVideo(videoId, videoData) {
     homeContent.style.display = 'none';
     playerLayout.classList.add('show');
 
+    // CORREÇÃO AQUI: Adicionado &mute=1 e &controls=1 para garantir funcionamento
     videoPlayer.innerHTML = `
         <iframe 
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}" 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
             allowfullscreen>
         </iframe>
