@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kitsune - Assista YouTube sem anúncios</title>
+    <title>Kitsune</title>
     <style>
         * {
             margin: 0;
@@ -36,7 +36,6 @@
             background: #555;
         }
         
-        /* Navbar Fixa */
         .navbar {
             position: fixed;
             top: 0;
@@ -141,6 +140,68 @@
         
         .btn-search:hover {
             transform: translateY(-2px);
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: relative;
+            margin-left: auto;
+        }
+
+        .language-btn {
+            padding: 0.6rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .language-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .language-dropdown {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            background: rgba(20, 20, 20, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 150px;
+            display: none;
+            flex-direction: column;
+            gap: 0.25rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .language-dropdown.show {
+            display: flex;
+        }
+
+        .language-option {
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .language-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .language-option.active {
+            background: rgba(74, 144, 226, 0.2);
+            color: #4A90E2;
         }
         
         .navbar-stats {
@@ -646,18 +707,31 @@
                             placeholder="Pesquisar"
                         >
                     </div>
-                    <button class="btn-search" onclick="searchVideos()">Buscar</button>
+                    <button class="btn-search" onclick="searchVideos()"><span data-i18n="search">Buscar</span></button>
+                </div>
+            </div>
+
+            <div class="language-selector">
+                <button class="language-btn" onclick="toggleLanguageDropdown()">
+                    🌐 <span id="currentLanguage">PT</span>
+                </button>
+                <div class="language-dropdown" id="languageDropdown">
+                    <div class="language-option" onclick="changeLanguage('pt')">🇧🇷 Português</div>
+                    <div class="language-option" onclick="changeLanguage('en')">🇺🇸 English</div>
+                    <div class="language-option" onclick="changeLanguage('es')">🇪🇸 Español</div>
+                    <div class="language-option" onclick="changeLanguage('ja')">🇯🇵 日本語</div>
+                    <div class="language-option" onclick="changeLanguage('ru')">🇷🇺 Русский</div>
                 </div>
             </div>
             
             <div class="navbar-stats">
                 <div class="stat-item">
                     <span class="stat-number" id="videosWatched">0</span>
-                    <span>assistidos</span>
+                    <span data-i18n="watched">assistidos</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number" id="searchesCount">0</span>
-                    <span>buscas</span>
+                    <span data-i18n="searches">buscas</span>
                 </div>
             </div>
         </div>
@@ -669,7 +743,7 @@
             <div id="playerLayout" class="player-layout">
                 <div class="player-main">
                     <button class="back-btn" onclick="backToResults()">
-                        ← Voltar
+                        ← <span data-i18n="back">Voltar</span>
                     </button>
                     
                     <div class="video-player-wrapper">
@@ -681,7 +755,7 @@
                 
                 <div class="related-sidebar">
                     <div class="sidebar-title">
-                        Vídeos Relacionados
+                        <span data-i18n="relatedVideos">Vídeos Relacionados</span>
                     </div>
                     <div id="relatedVideos"></div>
                 </div>
@@ -692,10 +766,10 @@
                 <!-- Categorias -->
                 <div class="quick-categories">
                     <button class="category-chip" onclick="quickSearch('música lofi')">Lofi</button>
-                    <button class="category-chip" onclick="quickSearch('tutorial programação')">Programação</button>
+                    <button class="category-chip" onclick="quickSearch('tutorial programação')"><span data-i18n="cat_programming">Programação</span></button>
                     <button class="category-chip" onclick="quickSearch('gameplay')">Gaming</button>
                     <button class="category-chip" onclick="quickSearch('podcast')">Podcast</button>
-                    <button class="category-chip" onclick="quickSearch('documentário')">Documentários</button>
+                    <button class="category-chip" onclick="quickSearch('documentário')"><span data-i18n="cat_documentaries">Documentários</span></button>
                     <button class="category-chip" onclick="quickSearch('comédia stand up')">Stand-up</button>
                 </div>
 
@@ -703,10 +777,10 @@
                 <div id="recentSection" class="content-section" style="display: none;">
                     <div class="section-header">
                         <div class="section-title">
-                            Assistidos Recentemente
+                            <span data-i18n="recentlyWatched">Assistidos Recentemente</span>
                         </div>
                         <button class="btn-secondary" onclick="clearHistory()">
-                            Limpar Histórico
+                            <span data-i18n="clearHistory">Limpar Histórico</span>
                         </button>
                     </div>
                     <div id="recentVideos" class="video-grid"></div>
@@ -716,7 +790,7 @@
                 <div id="suggestionsSection" class="content-section" style="display: none;">
                     <div class="section-header">
                         <div class="section-title">
-                            Sugestões para Você
+                            <span data-i18n="suggestionsForYou">Sugestões para Você</span>
                         </div>
                     </div>
                     <div id="suggestedVideos" class="video-grid"></div>
@@ -726,7 +800,7 @@
                 <div id="trendingSection" class="content-section" style="display: none;">
                     <div class="section-header">
                         <div class="section-title">
-                            Em Alta
+                            <span data-i18n="trending">Em Alta</span>
                         </div>
                     </div>
                     <div id="trendingVideos" class="video-grid"></div>
@@ -734,8 +808,8 @@
 
                 <!-- Empty State -->
                 <div id="emptyState" class="empty-state">
-                    <div class="empty-title">Bem-vindo ao Kitsune!</div>
-                    <div class="empty-text">Use a barra de busca para encontrar seus vídeos favoritos</div>
+                    <div class="empty-title"><span data-i18n="welcomeTitle">Bem-vindo ao Kitsune!</span></div>
+                    <div class="empty-text"><span data-i18n="welcomeText">Use a barra de busca para encontrar seus vídeos favoritos</span></div>
                 </div>
             </div>
 
@@ -743,21 +817,195 @@
             <div id="resultsSection" class="content-section" style="display: none;">
                 <div class="section-header">
                     <div class="section-title">
-                        Resultados da Busca
+                        <span data-i18n="searchResults">Resultados da Busca</span>
                     </div>
                 </div>
                 <div id="resultsContainer" class="video-grid"></div>
                 <div id="loadingMore" class="loading-container" style="display: none;">
                     <div class="loading-spinner"></div>
-                    <p>Carregando mais vídeos...</p>
+                    <p><span data-i18n="loadingMore">Carregando mais vídeos...</span></p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-// Kitsune - JavaScript sem API
-// Usa scraping do YouTube + iframe normal
+// Translations
+const translations = {
+    pt: {
+        search: 'Buscar',
+        watched: 'assistidos',
+        searches: 'buscas',
+        back: 'Voltar',
+        relatedVideos: 'Vídeos Relacionados',
+        cat_programming: 'Programação',
+        cat_documentaries: 'Documentários',
+        recentlyWatched: 'Assistidos Recentemente',
+        clearHistory: 'Limpar Histórico',
+        suggestionsForYou: 'Sugestões para Você',
+        trending: 'Em Alta',
+        welcomeTitle: 'Bem-vindo ao Kitsune!',
+        welcomeText: 'Use a barra de busca para encontrar seus vídeos favoritos',
+        searchResults: 'Resultados da Busca',
+        loadingMore: 'Carregando mais vídeos...',
+        searchPlaceholder: 'Pesquisar',
+        searching: 'Buscando vídeos...',
+        noResults: 'Nenhum resultado encontrado',
+        tryOtherWords: 'Tente buscar com outras palavras',
+        errorSearching: 'Erro ao buscar vídeos',
+        checkConnection: 'Verifique sua conexão ou tente novamente',
+        confirmClearHistory: 'Deseja realmente limpar todo o histórico?'
+    },
+    en: {
+        search: 'Search',
+        watched: 'watched',
+        searches: 'searches',
+        back: 'Back',
+        relatedVideos: 'Related Videos',
+        cat_programming: 'Programming',
+        cat_documentaries: 'Documentaries',
+        recentlyWatched: 'Recently Watched',
+        clearHistory: 'Clear History',
+        suggestionsForYou: 'Suggestions for You',
+        trending: 'Trending',
+        welcomeTitle: 'Welcome to Kitsune!',
+        welcomeText: 'Use the search bar to find your favorite videos',
+        searchResults: 'Search Results',
+        loadingMore: 'Loading more videos...',
+        searchPlaceholder: 'Search',
+        searching: 'Searching videos...',
+        noResults: 'No results found',
+        tryOtherWords: 'Try searching with other words',
+        errorSearching: 'Error searching videos',
+        checkConnection: 'Check your connection or try again',
+        confirmClearHistory: 'Do you really want to clear all history?'
+    },
+    es: {
+        search: 'Buscar',
+        watched: 'vistos',
+        searches: 'búsquedas',
+        back: 'Volver',
+        relatedVideos: 'Videos Relacionados',
+        cat_programming: 'Programación',
+        cat_documentaries: 'Documentales',
+        recentlyWatched: 'Vistos Recientemente',
+        clearHistory: 'Borrar Historial',
+        suggestionsForYou: 'Sugerencias para Ti',
+        trending: 'Tendencias',
+        welcomeTitle: '¡Bienvenido a Kitsune!',
+        welcomeText: 'Usa la barra de búsqueda para encontrar tus videos favoritos',
+        searchResults: 'Resultados de Búsqueda',
+        loadingMore: 'Cargando más videos...',
+        searchPlaceholder: 'Buscar',
+        searching: 'Buscando videos...',
+        noResults: 'No se encontraron resultados',
+        tryOtherWords: 'Intenta buscar con otras palabras',
+        errorSearching: 'Error al buscar videos',
+        checkConnection: 'Verifica tu conexión o intenta de nuevo',
+        confirmClearHistory: '¿Realmente deseas borrar todo el historial?'
+    },
+    ja: {
+        search: '検索',
+        watched: '視聴済み',
+        searches: '検索',
+        back: '戻る',
+        relatedVideos: '関連動画',
+        cat_programming: 'プログラミング',
+        cat_documentaries: 'ドキュメンタリー',
+        recentlyWatched: '最近視聴した動画',
+        clearHistory: '履歴をクリア',
+        suggestionsForYou: 'あなたへのおすすめ',
+        trending: 'トレンド',
+        welcomeTitle: 'Kitsuneへようこそ！',
+        welcomeText: '検索バーを使ってお気に入りの動画を見つけましょう',
+        searchResults: '検索結果',
+        loadingMore: 'さらに動画を読み込んでいます...',
+        searchPlaceholder: '検索',
+        searching: '動画を検索中...',
+        noResults: '結果が見つかりませんでした',
+        tryOtherWords: '他のキーワードで検索してみてください',
+        errorSearching: '動画の検索中にエラーが発生しました',
+        checkConnection: '接続を確認するか、もう一度お試しください',
+        confirmClearHistory: '本当に履歴をすべてクリアしますか？'
+    },
+    ru: {
+        search: 'Поиск',
+        watched: 'просмотрено',
+        searches: 'поисков',
+        back: 'Назад',
+        relatedVideos: 'Похожие видео',
+        cat_programming: 'Программирование',
+        cat_documentaries: 'Документальные',
+        recentlyWatched: 'Недавно просмотренные',
+        clearHistory: 'Очистить историю',
+        suggestionsForYou: 'Рекомендации для вас',
+        trending: 'В тренде',
+        welcomeTitle: 'Добро пожаловать в Kitsune!',
+        welcomeText: 'Используйте поисковую строку, чтобы найти свои любимые видео',
+        searchResults: 'Результаты поиска',
+        loadingMore: 'Загрузка видео...',
+        searchPlaceholder: 'Поиск',
+        searching: 'Поиск видео...',
+        noResults: 'Результаты не найдены',
+        tryOtherWords: 'Попробуйте другие ключевые слова',
+        errorSearching: 'Ошибка при поиске видео',
+        checkConnection: 'Проверьте подключение или попробуйте снова',
+        confirmClearHistory: 'Вы действительно хотите очистить всю историю?'
+    }
+};
+
+let currentLang = localStorage.getItem('kitsune_language') || 'pt';
+
+function changeLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('kitsune_language', lang);
+    
+    // Update all translated elements
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+            element.textContent = translations[lang][key];
+        }
+    });
+    
+    // Update placeholder
+    document.getElementById('searchInput').placeholder = translations[lang].searchPlaceholder;
+    
+    // Update language display
+    const langCodes = { pt: 'PT', en: 'EN', es: 'ES', ja: '日本', ru: 'РУ' };
+    document.getElementById('currentLanguage').textContent = langCodes[lang];
+    
+    // Update active state
+    document.querySelectorAll('.language-option').forEach(option => {
+        option.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    toggleLanguageDropdown();
+}
+
+function toggleLanguageDropdown() {
+    const dropdown = document.getElementById('languageDropdown');
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const languageSelector = document.querySelector('.language-selector');
+    if (!languageSelector.contains(event.target)) {
+        document.getElementById('languageDropdown').classList.remove('show');
+    }
+});
+
+// Initialize language on page load
+window.addEventListener('DOMContentLoaded', () => {
+    changeLanguage(currentLang);
+    // Set active state for current language
+    const langIndex = ['pt', 'en', 'es', 'ja', 'ru'].indexOf(currentLang);
+    if (langIndex !== -1) {
+        document.querySelectorAll('.language-option')[langIndex].classList.add('active');
+    }
+});
 
 const watchHistory = [];
 let searchCount = 0;
@@ -767,38 +1015,31 @@ let currentPage = 1;
 let isLoadingMore = false;
 let currentVideoData = null;
 
-// Função para buscar vídeos via scraping
 async function searchYouTubeNoAPI(query, page = 1) {
     try {
-        // Usar a URL de busca do YouTube direto
         const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
         
-        // Fetch com CORS proxy (você vai precisar de um)
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const response = await fetch(proxyUrl + encodeURIComponent(searchUrl));
         const html = await response.text();
         
-        // Extrair dados do ytInitialData
         const videosData = extractVideosFromHTML(html);
         return videosData;
         
     } catch (error) {
         console.error('Erro ao buscar:', error);
-        // Fallback: usar método alternativo
         return await searchYouTubeFallback(query);
     }
 }
 
-// Extrair vídeos do HTML do YouTube
 function extractVideosFromHTML(html) {
     try {
-        // Procurar por ytInitialData no HTML
+
         const match = html.match(/var ytInitialData = ({.+?});/);
         if (!match) return [];
         
         const data = JSON.parse(match[1]);
         
-        // Navegar pela estrutura do YouTube
         const contents = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
         if (!contents) return [];
         
@@ -838,10 +1079,9 @@ function extractVideosFromHTML(html) {
     }
 }
 
-// Método fallback usando RSS feed do YouTube
 async function searchYouTubeFallback(query) {
     try {
-        // Usar API de busca alternativa (noembed.com)
+
         const response = await fetch(`https://noembed.com/search?provider=youtube&query=${encodeURIComponent(query)}`);
         const data = await response.json();
         
@@ -866,7 +1106,6 @@ async function searchYouTubeFallback(query) {
     }
 }
 
-// Buscar vídeos em alta (trending)
 async function getTrendingVideos() {
     try {
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
@@ -880,47 +1119,85 @@ async function getTrendingVideos() {
     }
 }
 
-// Buscar vídeos relacionados
+
 async function getRelatedVideos(videoId) {
     try {
+        console.log('Buscando vídeos relacionados para:', videoId);
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
         const response = await fetch(proxyUrl + encodeURIComponent(videoUrl));
         const html = await response.text();
         
-        // Extrair vídeos relacionados
         const match = html.match(/var ytInitialData = ({.+?});/);
-        if (!match) return [];
+        if (!match) {
+            console.log('ytInitialData não encontrado no HTML');
+            return [];
+        }
         
         const data = JSON.parse(match[1]);
+        console.log('ytInitialData parseado com sucesso');
         
-        // Navegar para relacionados
-        const secondary = data?.contents?.twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results;
-        if (!secondary) return [];
+        // Tenta múltiplos caminhos para encontrar os vídeos relacionados
+        let secondary = data?.contents?.twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results;
+        
+        if (!secondary) {
+            // Caminho alternativo 1
+            secondary = data?.contents?.twoColumnWatchNextResults?.results?.results?.contents;
+        }
+        
+        if (!secondary) {
+            // Caminho alternativo 2
+            secondary = data?.playerOverlays?.playerOverlayRenderer?.endScreen?.watchNextEndScreenRenderer?.results;
+        }
+        
+        if (!secondary) {
+            console.log('Estrutura de vídeos relacionados não encontrada. Caminhos verificados:');
+            console.log('- twoColumnWatchNextResults?.secondaryResults?.secondaryResults?.results');
+            console.log('- twoColumnWatchNextResults?.results?.results?.contents');
+            console.log('Estrutura disponível:', Object.keys(data?.contents || {}));
+            return [];
+        }
+        
+        console.log('Encontrado array de vídeos relacionados com', secondary.length, 'items');
         
         const videos = [];
         
         for (const item of secondary) {
-            const compactVideo = item.compactVideoRenderer;
+            // Tenta diferentes tipos de renderer
+            const compactVideo = item.compactVideoRenderer || item.videoRenderer;
             if (!compactVideo) continue;
             
-            videos.push({
-                id: { videoId: compactVideo.videoId },
-                snippet: {
-                    title: compactVideo.title?.simpleText || '',
-                    channelTitle: compactVideo.longBylineText?.runs?.[0]?.text || '',
-                    publishedAt: new Date().toISOString(),
-                    thumbnails: {
-                        medium: {
-                            url: compactVideo.thumbnail?.thumbnails?.[0]?.url || 
-                                 `https://i.ytimg.com/vi/${compactVideo.videoId}/mqdefault.jpg`
+            // Parse do título (pode estar em diferentes formatos)
+            let title = compactVideo.title?.simpleText || 
+                       compactVideo.title?.runs?.[0]?.text || 
+                       '';
+            
+            // Parse do canal
+            let channelTitle = compactVideo.longBylineText?.runs?.[0]?.text || 
+                             compactVideo.shortBylineText?.runs?.[0]?.text ||
+                             compactVideo.ownerText?.runs?.[0]?.text || 
+                             '';
+            
+            if (compactVideo.videoId && title) {
+                videos.push({
+                    id: { videoId: compactVideo.videoId },
+                    snippet: {
+                        title: title,
+                        channelTitle: channelTitle,
+                        publishedAt: new Date().toISOString(),
+                        thumbnails: {
+                            medium: {
+                                url: compactVideo.thumbnail?.thumbnails?.[0]?.url || 
+                                     `https://i.ytimg.com/vi/${compactVideo.videoId}/mqdefault.jpg`
+                            }
                         }
-                    }
-                },
-                lengthSeconds: parseDuration(compactVideo.lengthText?.simpleText)
-            });
+                    },
+                    lengthSeconds: parseDuration(compactVideo.lengthText?.simpleText || compactVideo.lengthText?.accessibility?.accessibilityData?.label)
+                });
+            }
         }
         
+        console.log('Total de vídeos relacionados extraídos:', videos.length);
         return videos;
     } catch (error) {
         console.error('Erro ao buscar relacionados:', error);
@@ -928,13 +1205,13 @@ async function getRelatedVideos(videoId) {
     }
 }
 
-// Extrair ID do vídeo de URL
+
 function extractVideoId(url) {
     const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^"&?\/\s]{11})/);
     return match ? match[1] : '';
 }
 
-// Parsear duração (5:30 -> segundos)
+
 function parseDuration(duration) {
     if (!duration) return 0;
     const parts = duration.split(':').reverse();
@@ -945,7 +1222,7 @@ function parseDuration(duration) {
     return seconds;
 }
 
-// Formatar duração (segundos -> 5:30)
+
 function formatDuration(seconds) {
     if (!seconds) return '';
     const hours = Math.floor(seconds / 3600);
@@ -958,23 +1235,25 @@ function formatDuration(seconds) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Inicialização
+
 async function initPage() {
     loadHistory();
     loadStats();
     displayRecentVideos();
     
+    // Esconde o empty state se houver histórico
     if (watchHistory.length > 0) {
-        await fetchSuggestions();
         document.getElementById('emptyState').style.display = 'none';
+        // Busca sugestões baseadas no histórico
+        await fetchSuggestions();
     } else {
+        // Se não houver histórico, mostra vídeos em alta
         await loadTrendingVideos();
     }
     
     setupInfiniteScroll();
 }
 
-// Setup Infinite Scroll
 function setupInfiniteScroll() {
     let timeout;
     window.addEventListener('scroll', () => {
@@ -995,7 +1274,7 @@ function setupInfiniteScroll() {
     });
 }
 
-// Carregar mais resultados
+
 async function loadMoreResults() {
     if (isLoadingMore) return;
     
@@ -1017,14 +1296,13 @@ async function loadMoreResults() {
     }
 }
 
-// Adicionar resultados ao grid
 function appendResults(videos) {
     const container = document.getElementById('resultsContainer');
     const html = videos.map(video => createVideoCard(video)).join('');
     container.insertAdjacentHTML('beforeend', html);
 }
 
-// Carregar histórico
+
 function loadHistory() {
     const saved = localStorage.getItem('youtubeHistory');
     if (saved) {
@@ -1033,13 +1311,12 @@ function loadHistory() {
     }
 }
 
-// Salvar histórico
+
 function saveHistory() {
     localStorage.setItem('youtubeHistory', JSON.stringify(watchHistory));
     updateStats();
 }
 
-// Carregar estatísticas
 function loadStats() {
     const stats = JSON.parse(localStorage.getItem('kitsune_stats') || '{"watches": 0, "searches": 0}');
     document.getElementById('videosWatched').textContent = stats.watches;
@@ -1047,7 +1324,7 @@ function loadStats() {
     searchCount = stats.searches;
 }
 
-// Atualizar estatísticas
+
 function updateStats() {
     const stats = {
         watches: watchHistory.length,
@@ -1058,7 +1335,7 @@ function updateStats() {
     document.getElementById('searchesCount').textContent = stats.searches;
 }
 
-// Adicionar ao histórico
+
 function addToHistory(video) {
     const index = watchHistory.findIndex(v => v.id.videoId === video.id.videoId);
     if (index !== -1) {
@@ -1074,9 +1351,9 @@ function addToHistory(video) {
     displayRecentVideos();
 }
 
-// Limpar histórico
+
 function clearHistory() {
-    if (confirm('Deseja realmente limpar todo o histórico?')) {
+    if (confirm(translations[currentLang].confirmClearHistory)) {
         watchHistory.length = 0;
         saveHistory();
         displayRecentVideos();
@@ -1084,7 +1361,7 @@ function clearHistory() {
     }
 }
 
-// Exibir vídeos recentes
+
 function displayRecentVideos() {
     const section = document.getElementById('recentSection');
     const container = document.getElementById('recentVideos');
@@ -1098,73 +1375,111 @@ function displayRecentVideos() {
     container.innerHTML = watchHistory.slice(0, 8).map(video => createVideoCard(video)).join('');
 }
 
-// Buscar sugestões
 async function fetchSuggestions() {
     if (watchHistory.length === 0) return;
     
     const section = document.getElementById('suggestionsSection');
     const container = document.getElementById('suggestedVideos');
     
+    // Pega palavras-chave dos últimos vídeos assistidos
     const keywords = watchHistory
         .slice(0, 3)
-        .map(v => v.snippet.title.split(' ').slice(0, 2).join(' '))
+        .map(v => v.snippet.title.split(' ').slice(0, 3).join(' '))
         .join(' ');
     
     try {
         const videos = await searchYouTubeNoAPI(keywords);
         
+        // Filtra vídeos que já estão no histórico
         const filtered = videos.filter(
             v => !watchHistory.some(h => h.id.videoId === v.id.videoId)
         );
         
+        console.log('Sugestões encontradas:', filtered.length);
+        
         if (filtered.length > 0) {
             section.style.display = 'block';
             container.innerHTML = filtered.slice(0, 8).map(video => createVideoCard(video)).join('');
+        } else {
+            // Se não encontrou sugestões únicas, tenta com trending
+            console.log('Nenhuma sugestão única encontrada, buscando trending...');
+            await loadTrendingVideos();
         }
     } catch (error) {
         console.error('Erro ao buscar sugestões:', error);
+        // Em caso de erro, tenta carregar trending como fallback
+        await loadTrendingVideos();
     }
 }
 
-// Carregar vídeos em alta
+
 async function loadTrendingVideos() {
     const section = document.getElementById('trendingSection');
     const container = document.getElementById('trendingVideos');
     
     try {
+        console.log('Buscando vídeos em alta...');
         const videos = await getTrendingVideos();
+        
+        console.log('Vídeos em alta encontrados:', videos.length);
         
         if (videos.length > 0) {
             section.style.display = 'block';
             container.innerHTML = videos.slice(0, 8).map(video => createVideoCard(video)).join('');
+        } else {
+            console.log('Nenhum vídeo em alta encontrado');
         }
     } catch (error) {
         console.error('Erro ao buscar trending:', error);
     }
 }
 
-// Buscar vídeos relacionados
 async function fetchRelatedVideos(videoId) {
+    console.log('=== Iniciando busca de vídeos relacionados ===');
     try {
         const videos = await getRelatedVideos(videoId);
-        displayRelatedVideos(videos);
+        
+        if (videos.length > 0) {
+            console.log('✓ Vídeos relacionados encontrados via scraping:', videos.length);
+            displayRelatedVideos(videos);
+        } else {
+            console.log('⚠ Nenhum vídeo relacionado encontrado via scraping, usando fallback de busca');
+            // Fallback: busca baseada no título do vídeo atual
+            if (currentVideoData) {
+                const query = currentVideoData.snippet.title.split(' ').slice(0, 4).join(' ');
+                console.log('Buscando por:', query);
+                const videos = await searchYouTubeNoAPI(query);
+                
+                // Remove o vídeo atual dos resultados
+                const filtered = videos.filter(v => v.id.videoId !== videoId);
+                console.log('✓ Vídeos encontrados via busca:', filtered.length);
+                displayRelatedVideos(filtered.slice(0, 20));
+            }
+        }
     } catch (error) {
-        console.error('Erro ao buscar relacionados:', error);
+        console.error('❌ Erro ao buscar relacionados:', error);
+        // Último fallback: tenta buscar mesmo sem o currentVideoData
         if (currentVideoData) {
-            const query = currentVideoData.snippet.title.split(' ').slice(0, 3).join(' ');
+            const query = currentVideoData.snippet.title.split(' ').slice(0, 4).join(' ');
             const videos = await searchYouTubeNoAPI(query);
             displayRelatedVideos(videos.slice(0, 20));
         }
     }
 }
 
-// Exibir vídeos relacionados
+
 function displayRelatedVideos(videos) {
+    console.log('Exibindo', videos.length, 'vídeos relacionados na sidebar');
     const container = document.getElementById('relatedVideos');
+    
+    if (videos.length === 0) {
+        container.innerHTML = '<div style="color: #666; padding: 1rem; text-align: center;">Nenhum vídeo relacionado disponível</div>';
+        return;
+    }
+    
     container.innerHTML = videos.map(video => createRelatedVideoItem(video)).join('');
 }
 
-// Criar item de vídeo relacionado
 function createRelatedVideoItem(video) {
     const videoDataStr = JSON.stringify(video).replace(/"/g, '&quot;');
     return `
@@ -1181,7 +1496,6 @@ function createRelatedVideoItem(video) {
     `;
 }
 
-// Criar card de vídeo
 function createVideoCard(video) {
     const channelInitial = video.snippet.channelTitle.charAt(0).toUpperCase();
     const videoDataStr = JSON.stringify(video).replace(/"/g, '&quot;');
@@ -1209,7 +1523,6 @@ function createVideoCard(video) {
     `;
 }
 
-// Buscar vídeos
 async function searchVideos() {
     const query = document.getElementById('searchInput').value.trim();
     
@@ -1221,13 +1534,11 @@ async function searchVideos() {
     await performSearch(query);
 }
 
-// Busca rápida
 function quickSearch(query) {
     document.getElementById('searchInput').value = query;
     performSearch(query);
 }
 
-// Realizar busca
 async function performSearch(query) {
     currentQuery = query;
     currentResults = [];
@@ -1242,7 +1553,7 @@ async function performSearch(query) {
     playerLayout.classList.remove('show');
     resultsSection.style.display = 'block';
 
-    resultsContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p>Buscando vídeos...</p></div>';
+    resultsContainer.innerHTML = `<div class="loading-container"><div class="loading-spinner"></div><p>${translations[currentLang].searching}</p></div>`;
     
     searchCount++;
     updateStats();
@@ -1254,9 +1565,8 @@ async function performSearch(query) {
         if (currentResults.length === 0) {
             resultsContainer.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon">🔍</div>
-                    <div class="empty-title">Nenhum resultado encontrado</div>
-                    <div class="empty-text">Tente buscar com outras palavras</div>
+                    <div class="empty-title">${translations[currentLang].noResults}</div>
+                    <div class="empty-text">${translations[currentLang].tryOtherWords}</div>
                 </div>
             `;
             return;
@@ -1267,20 +1577,17 @@ async function performSearch(query) {
         console.error('Erro:', error);
         resultsContainer.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">⚠️</div>
-                <div class="empty-title">Erro ao buscar vídeos</div>
-                <div class="empty-text">Verifique sua conexão ou tente novamente</div>
+                <div class="empty-title">${translations[currentLang].errorSearching}</div>
+                <div class="empty-text">${translations[currentLang].checkConnection}</div>
             </div>
         `;
     }
 }
 
-// Função auxiliar para reproduzir vídeo
 function playVideoFromData(videoData) {
     playVideo(videoData.id.videoId, videoData);
 }
 
-// Reproduzir vídeo
 function playVideo(videoId, videoData) {
     const playerLayout = document.getElementById('playerLayout');
     const resultsSection = document.getElementById('resultsSection');
@@ -1313,10 +1620,9 @@ function playVideo(videoId, videoData) {
     homeContent.style.display = 'none';
     playerLayout.classList.add('show');
 
-    // Iframe normal do YouTube
     videoPlayer.innerHTML = `
         <iframe 
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
             allowfullscreen>
         </iframe>
@@ -1327,7 +1633,7 @@ function playVideo(videoId, videoData) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Voltar
+
 function backToResults() {
     const playerLayout = document.getElementById('playerLayout');
     const resultsSection = document.getElementById('resultsSection');
@@ -1342,7 +1648,6 @@ function backToResults() {
     }
 }
 
-// Ir para home
 function goHome() {
     const playerLayout = document.getElementById('playerLayout');
     const resultsSection = document.getElementById('resultsSection');
@@ -1356,7 +1661,6 @@ function goHome() {
     document.getElementById('searchInput').value = '';
 }
 
-// Utilitários
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -1369,14 +1673,53 @@ function formatDate(dateString) {
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 1) return 'Hoje';
-    if (diffDays < 7) return `${diffDays} dias atrás`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;
-    return `${Math.floor(diffDays / 365)} anos atrás`;
+    const translations_date = {
+        pt: {
+            today: 'Hoje',
+            daysAgo: 'dias atrás',
+            weeksAgo: 'semanas atrás',
+            monthsAgo: 'meses atrás',
+            yearsAgo: 'anos atrás'
+        },
+        en: {
+            today: 'Today',
+            daysAgo: 'days ago',
+            weeksAgo: 'weeks ago',
+            monthsAgo: 'months ago',
+            yearsAgo: 'years ago'
+        },
+        es: {
+            today: 'Hoy',
+            daysAgo: 'días atrás',
+            weeksAgo: 'semanas atrás',
+            monthsAgo: 'meses atrás',
+            yearsAgo: 'años atrás'
+        },
+        ja: {
+            today: '今日',
+            daysAgo: '日前',
+            weeksAgo: '週間前',
+            monthsAgo: 'ヶ月前',
+            yearsAgo: '年前'
+        },
+        ru: {
+            today: 'Сегодня',
+            daysAgo: 'дней назад',
+            weeksAgo: 'недель назад',
+            monthsAgo: 'месяцев назад',
+            yearsAgo: 'лет назад'
+        }
+    };
+    
+    const t = translations_date[currentLang];
+    
+    if (diffDays < 1) return t.today;
+    if (diffDays < 7) return `${diffDays} ${t.daysAgo}`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${t.weeksAgo}`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} ${t.monthsAgo}`;
+    return `${Math.floor(diffDays / 365)} ${t.yearsAgo}`;
 }
 
-// Event Listeners
 document.getElementById('searchInput').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         searchVideos();
@@ -1384,6 +1727,227 @@ document.getElementById('searchInput').addEventListener('keypress', function(e) 
 });
 
 window.addEventListener('DOMContentLoaded', initPage);
-    </script>
+
+// ===== PT-BR ==============================================
+// ==========================================================
+// (((((((((     ME LEIA - IMPORTANTE      )))))))))))
+// brecha do embedding do Youtube descoberta por maxgfortes//david-spencer em 19/09/2025 e colocada em pratica em 06/02/2025.
+// Permite assistir vídeos do YouTube sem anúncios, usando um iframe com parâmetros específicos para autoplay e loop, e sem carregar a página oficial do YouTube, evitando assim os anúncios.
+// .
+// Essa técnica é possível porque o YouTube não consegue inserir anúncios em iframes que usam o domínio "youtube.com/embed/" com os parâmetros corretos, especialmente quando o vídeo é configurado para autoplay e loop. Ao usar esse método, os usuários podem assistir aos vídeos sem interrupções de anúncios, proporcionando uma experiência mais fluida e agradável.
+// É importante ressaltar que essa técnica pode violar os termos de serviço do YouTube, e o uso dela deve ser feito com cautela, respeitando os direitos dos criadores de conteúdo e as políticas da plataforma.
+// ==========================================================
+// ((((((((((     SOBRE O CRIADOR    ))))))))))))
+// .
+// sobre mim/sobre maxgfortes:
+// sou dev desde os meus 14 anos quando fiz meu primeiro codigo, hoje com 17 anos (2026) amo codar, achar breachas em sistemas e criar ferramentas que facilitem a vida das pessoas, sou o maxgfortes, criador do kitsune, um projeto pessoal para assistir youtube sem anúncios e com uma interface personalizada, espero que gostem do projeto e aproveitem a experiência de assistir vídeos sem interrupções!
+// eu tambem gosto muito de radiohead, tv girl, alex g e deftones.
+// ==========================================================
+// ((((((   SOBRE O PROJETO/KITSUNE    )))))
+// .
+// Versão: 1.0 
+// Data de lançamento: 06/02/2025
+// Licença: MIT License
+// discord: maxgfortes 
+// ===========================================================
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+// ===== EN ==============================================
+// =======================================================
+// (((((((((     READ ME - IMPORTANT      ))))))))))))
+// YouTube embedding loophole discovered by maxgfortes//david-spencer on 09/19/2025 and put into practice on 02/06/2025.
+// Allows watching YouTube videos without ads, using an iframe with specific parameters for autoplay and loop, and without loading the official YouTube page, thus avoiding ads.
+// .
+// This technique is possible because YouTube cannot insert ads into iframes that use the "youtube.com/embed/" domain with the correct parameters, especially when the video is set to autoplay and loop. By using this method, users can watch videos without ad interruptions, providing a smoother and more pleasant experience.
+// It is important to note that this technique may violate YouTube’s terms of service, and its use should be done with caution, respecting the rights of content creators and the platform’s policies.
+// =======================================================
+// ((((((((((     ABOUT THE CREATOR    ))))))))))))
+// .
+// about me/about maxgfortes:
+// I’ve been a developer since I was 14, when I wrote my first code. Now at 17 (2026), I love coding, finding system loopholes, and creating tools that make people’s lives easier. I’m maxgfortes, creator of Kitsune, a personal project to watch YouTube without ads and with a customized interface. I hope you enjoy the project and the experience of watching videos without interruptions!
+// I also really like Radiohead, TV Girl, Alex G, and Deftones.
+// =======================================================
+// ((((((   ABOUT THE PROJECT/KITSUNE    )))))
+// .
+// Version: 1.0
+// Release date: 02/06/2025
+// License: MIT License
+// Discord: maxgfortes
+// =======================================================
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+
+// ===== ES ==============================================
+// =======================================================
+// (((((((((     LÉEME - IMPORTANTE      ))))))))))))
+// Brecha en el sistema de incrustación de YouTube descubierta por maxgfortes//david-spencer el 19/09/2025 y puesta en práctica el 06/02/2025.
+// Permite ver videos de YouTube sin anuncios, usando un iframe con parámetros específicos para autoplay y loop, sin cargar la página oficial de YouTube y evitando así los anuncios.
+// .
+// Esta técnica es posible porque YouTube no puede insertar anuncios en iframes que usan el dominio "youtube.com/embed/" con los parámetros correctos, especialmente cuando el video está configurado para autoplay y loop. Al usar este método, los usuarios pueden ver videos sin interrupciones de anuncios, proporcionando una experiencia más fluida y agradable.
+// Es importante destacar que esta técnica puede violar los términos de servicio de YouTube, y su uso debe hacerse con precaución, respetando los derechos de los creadores de contenido y las políticas de la plataforma.
+// =======================================================
+// ((((((((((     SOBRE EL CREADOR    ))))))))))))
+// .
+// sobre mí/sobre maxgfortes:
+// Soy desarrollador desde los 14 años, cuando hice mi primer código. Hoy con 17 años (2026), me encanta programar, encontrar brechas en sistemas y crear herramientas que faciliten la vida de las personas. Soy maxgfortes, creador de Kitsune, un proyecto personal para ver YouTube sin anuncios y con una interfaz personalizada. ¡Espero que les guste el proyecto y disfruten la experiencia de ver videos sin interrupciones!
+// También me gusta mucho Radiohead, TV Girl, Alex G y Deftones.
+// =======================================================
+// ((((((   SOBRE EL PROYECTO/KITSUNE    )))))
+// .
+// Versión: 1.0
+// Fecha de lanzamiento: 06/02/2025
+// Licencia: MIT License
+// Discord: maxgfortes
+// =======================================================
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+
+// ===== FR ==============================================
+// =======================================================
+// (((((((((     LISEZ-MOI - IMPORTANT      ))))))))))))
+// Faille dans l’intégration YouTube découverte par maxgfortes//david-spencer le 19/09/2025 et mise en pratique le 06/02/2025.
+// Permet de regarder des vidéos YouTube sans publicités, en utilisant un iframe avec des paramètres spécifiques pour l’autoplay et la boucle, sans charger la page officielle de YouTube, évitant ainsi les annonces.
+// .
+// Cette technique est possible car YouTube ne peut pas insérer de publicités dans les iframes utilisant le domaine "youtube.com/embed/" avec les paramètres corrects, surtout lorsque la vidéo est configurée pour autoplay et boucle. En utilisant cette méthode, les utilisateurs peuvent regarder les vidéos sans interruptions publicitaires, offrant une expérience plus fluide et agréable.
+// Il est important de noter que cette technique peut violer les conditions d’utilisation de YouTube, et son utilisation doit être faite avec prudence, en respectant les droits des créateurs de contenu et les politiques de la plateforme.
+// =======================================================
+// ((((((((((     À PROPOS DU CRÉATEUR    ))))))))))))
+// .
+// à propos de moi/à propos de maxgfortes :
+// Je suis développeur depuis mes 14 ans, lorsque j’ai écrit mon premier code. Aujourd’hui, à 17 ans (2026), j’adore coder, trouver des failles dans les systèmes et créer des outils qui facilitent la vie des gens. Je suis maxgfortes, créateur de Kitsune, un projet personnel pour regarder YouTube sans publicités avec une interface personnalisée. J’espère que vous apprécierez le projet et l’expérience de regarder des vidéos sans interruptions !
+// J’aime aussi beaucoup Radiohead, TV Girl, Alex G et Deftones.
+// =======================================================
+// ((((((   À PROPOS DU PROJET/KITSUNE    )))))
+// .
+// Version : 1.0
+// Date de sortie : 06/02/2025
+// Licence : MIT License
+// Discord : maxgfortes
+// =======================================================
+
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+
+// ===== DE ==============================================
+// =======================================================
+// (((((((((     LIES MICH - WICHTIG      ))))))))))))
+// YouTube-Embedding-Lücke entdeckt von maxgfortes//david-spencer am 19.09.2025 und umgesetzt am 06.02.2025.
+// Ermöglicht das Ansehen von YouTube-Videos ohne Werbung, indem ein iframe mit speziellen Parametern für Autoplay und Loop verwendet wird, ohne die offizielle YouTube-Seite zu laden und so Werbung zu vermeiden.
+// .
+// Diese Technik ist möglich, weil YouTube keine Werbung in iframes einfügen kann, die die Domain "youtube.com/embed/" mit den richtigen Parametern verwenden, besonders wenn das Video auf Autoplay und Loop eingestellt ist. Mit dieser Methode können Nutzer Videos ohne Werbeunterbrechungen ansehen, was ein flüssigeres und angenehmeres Erlebnis bietet.
+// Es ist wichtig zu beachten, dass diese Technik gegen die Nutzungsbedingungen von YouTube verstoßen kann, und ihre Verwendung sollte mit Vorsicht erfolgen, unter Beachtung der Rechte der Content-Ersteller und der Plattformrichtlinien.
+// =======================================================
+// ((((((((((     ÜBER DEN ERSTELLER    ))))))))))))
+// .
+// über mich/über maxgfortes:
+// Ich bin seit meinem 14. Lebensjahr Entwickler, als ich meinen ersten Code geschrieben habe. Heute, mit 17 Jahren (2026), liebe ich es zu programmieren, Systemlücken zu finden und Tools zu erstellen, die das Leben der Menschen erleichtern. Ich bin maxgfortes, der Ersteller von Kitsune, einem persönlichen Projekt, um YouTube ohne Werbung und mit einer angepassten Oberfläche zu schauen. Ich hoffe, euch gefällt das Projekt und ihr genießt das Erlebnis ohne Unterbrechungen!
+// Ich höre auch sehr gerne Radiohead, TV Girl, Alex G und Deftones.
+// =======================================================
+// ((((((   ÜBER DAS PROJEKT/KITSUNE    )))))
+// .
+// Version: 1.0
+// Veröffentlichungsdatum: 06.02.2025
+// Lizenz: MIT License
+// Discord: maxgfortes
+// =======================================================
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+// ===== JP ==============================================
+// =======================================================
+// (((((((((     お読みください - 重要      ))))))))))))
+// YouTubeの埋め込みの抜け穴は、maxgfortes//david-spencer によって 2025年09月19日に発見され、2025年02月06日に実用化されました。
+// 特定の autoplay と loop パラメータを持つ iframe を使用し、公式のYouTubeページを読み込まずに広告なしで動画を視聴できます。
+// .
+// この技術は、正しいパラメータで「youtube.com/embed/」ドメインを使用する iframe に対して、YouTubeが広告を挿入できないため可能になっています。特に動画が autoplay と loop に設定されている場合に有効です。この方法を使用すると、ユーザーは広告の中断なしで動画を視聴でき、よりスムーズで快適な体験を得られます。
+// この技術はYouTubeの利用規約に違反する可能性があるため、コンテンツ制作者の権利やプラットフォームのポリシーを尊重し、注意して使用する必要があります。
+// =======================================================
+// ((((((((((     制作者について    ))))))))))))
+// .
+// 私について / maxgfortesについて:
+// 私は14歳のときに初めてコードを書いて以来、開発者をしています。現在17歳（2026年）で、コーディングやシステムの抜け穴を見つけること、人々の生活を楽にするツールを作ることが大好きです。私は maxgfortes、Kitsune の開発者です。これは広告なしでYouTubeを視聴し、カスタムインターフェースを提供する個人プロジェクトです。プロジェクトを楽しみ、途切れのない動画体験を味わってもらえたら嬉しいです！
+// また、Radiohead、TV Girl、Alex G、Deftones も大好きです。
+// =======================================================
+// ((((((   プロジェクト / KITSUNE について    )))))
+// .
+// バージョン: 1.0
+// リリース日: 2025年02月06日
+// ライセンス: MIT License
+// Discord: maxgfortes
+// =======================================================
+
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+
+// ===== RU ==============================================
+// =======================================================
+// (((((((((     ПРОЧИТАЙТЕ - ВАЖНО      ))))))))))))
+// Уязвимость в системе встраивания YouTube обнаружена maxgfortes//david-spencer 19.09.2025 и реализована на практике 06.02.2025.
+// Позволяет смотреть видео YouTube без рекламы, используя iframe со специальными параметрами autoplay и loop, без загрузки официальной страницы YouTube, тем самым избегая рекламы.
+// .
+// Эта техника возможна, потому что YouTube не может вставлять рекламу в iframe, использующие домен "youtube.com/embed/" с правильными параметрами, особенно когда видео настроено на autoplay и loop. Используя этот метод, пользователи могут смотреть видео без рекламных прерываний, получая более плавный и приятный опыт.
+// Важно отметить, что эта техника может нарушать условия использования YouTube, и её следует применять с осторожностью, уважая права создателей контента и правила платформы.
+// =======================================================
+// ((((((((((     О СОЗДАТЕЛЕ    ))))))))))))
+// .
+// обо мне / о maxgfortes:
+// Я разработчик с 14 лет, когда написал свой первый код. Сейчас мне 17 лет (2026), я люблю программировать, находить уязвимости в системах и создавать инструменты, которые упрощают жизнь людям. Я maxgfortes, создатель Kitsune — личного проекта для просмотра YouTube без рекламы и с настраиваемым интерфейсом. Надеюсь, вам понравится проект и опыт просмотра без прерываний!
+// Также мне очень нравятся Radiohead, TV Girl, Alex G и Deftones.
+// =======================================================
+// ((((((   О ПРОЕКТЕ / KITSUNE    )))))
+// .
+// Версия: 1.0
+// Дата релиза: 06.02.2025
+// Лицензия: MIT License
+// Discord: maxgfortes
+// =======================================================
+
+
+//+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
+
+
+// ===== ZH-CN ===========================================
+// =======================================================
+// (((((((((     请先阅读 - 重要      ))))))))))))
+// YouTube 嵌入漏洞由 maxgfortes//david-spencer 于 2025年09月19日发现，并于 2025年02月06日投入实践。
+// 通过使用带有特定 autoplay 和 loop 参数的 iframe，并且不加载官方 YouTube 页面，从而实现无广告观看 YouTube 视频。
+// .
+// 这种技术之所以可行，是因为当 iframe 使用带有正确参数的 “youtube.com/embed/” 域名时，YouTube 无法插入广告，尤其是在视频设置为 autoplay 和 loop 的情况下。使用这种方法，用户可以在没有广告中断的情况下观看视频，获得更加流畅和舒适的体验。
+// 需要注意的是，这种技术可能违反 YouTube 的服务条款，使用时应谨慎，并尊重内容创作者的权利以及平台政策。
+// =======================================================
+// ((((((((((     关于作者    ))))))))))))
+// .
+// 关于我 / 关于 maxgfortes：
+// 我从14岁写下第一段代码开始成为开发者。现在17岁（2026年），我热爱编程、寻找系统漏洞，并创建让人们生活更轻松的工具。我是 maxgfortes，Kitsune 的开发者，这是一个个人项目，用于无广告观看 YouTube 并提供自定义界面。希望你喜欢这个项目，并享受没有中断的观看体验！
+// 我也非常喜欢 Radiohead、TV Girl、Alex G 和 Deftones。
+// =======================================================
+// ((((((   关于项目 / KITSUNE    )))))
+// .
+// 版本：1.0
+// 发布日期：2025年02月06日
+// 许可证：MIT License
+// Discord：maxgfortes
+// =======================================================
+
+
+
+</script>
 </body>
 </html>
